@@ -1,0 +1,1001 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Virtual Stamp Collection</title>
+  <meta name="description"
+    content="A single-page, data-driven virtual stamp collection with filtering, SEO-friendly URLs, and lightbox modals." />
+  <link rel="icon" href="data:," />
+
+  <!-- Tailwind (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          container: { center: true, padding: '1rem' },
+        }
+      }
+    }
+  </script>
+  <!-- jQuery (CDN) -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"
+    integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+
+  <!-- Open Graph for SEO -->
+  <meta property="og:title" content="Virtual Stamp Collection" />
+  <meta property="og:description" content="Browse stamps by country, year, denomination, value, and more." />
+  <meta property="og:type" content="website" />
+
+  <style>
+    /* Simple fade for modals */
+    .fade-enter {
+      opacity: 0
+    }
+
+    .fade-enter-active {
+      opacity: 1;
+      transition: opacity .15s ease-in-out
+    }
+
+    .fade-leave {
+      opacity: 1
+    }
+
+    .fade-leave-active {
+      opacity: 0;
+      transition: opacity .15s ease-in-out
+    }
+
+    /* Lightbox zoom */
+    .zoom-enter {
+      transform: scale(.95);
+      opacity: 0
+    }
+
+    .zoom-enter-active {
+      transform: scale(1);
+      opacity: 1;
+      transition: transform .15s ease, opacity .15s ease
+    }
+
+    .zoom-leave {
+      transform: scale(1);
+      opacity: 1
+    }
+
+    .zoom-leave-active {
+      transform: scale(.95);
+      opacity: 0;
+      transition: transform .15s ease, opacity .15s ease
+    }
+
+    /* Simple tooltip */
+    .tooltip:after {
+      content: attr(data-tip);
+      position: absolute;
+      white-space: nowrap;
+      background: rgba(0, 0, 0, .8);
+      color: #fff;
+      padding: .25rem .5rem;
+      border-radius: .25rem;
+      font-size: .75rem;
+      transform: translateY(-100%);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .1s;
+    }
+
+    .tooltip:hover:after {
+      opacity: 1
+    }
+  </style>
+</head>
+
+<body class="bg-slate-50 text-slate-900 min-h-screen">
+  <header class="sticky top-0 z-30 bg-white/80 backdrop-blur border-b border-slate-200">
+    <div class="container mx-auto flex items-center gap-4 py-3">
+      <div class="flex items-center gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-7 h-7 text-indigo-600">
+          <path
+            d="M3 7.5c0-.828.672-1.5 1.5-1.5h15c.828 0 1.5.672 1.5 1.5v11.25A2.25 2.25 0 0 1 18.75 21H5.25A2.25 2.25 0 0 1 3 18.75V7.5Z" />
+          <path d="M6 3.75A.75.75 0 0 1 6.75 3h10.5a.75.75 0 0 1 .75.75V6H6V3.75Z" />
+        </svg>
+        <h1 class="text-xl font-semibold tracking-tight">Virtual Stamp Collection</h1>
+      </div>
+      <div class="ml-auto flex items-center gap-2">
+        <input id="searchInput" type="search" placeholder="Search country, tags, notes…"
+          class="w-60 md:w-96 rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        <button id="clearSearch"
+          class="text-sm px-3 py-2 rounded-xl border border-slate-300 hover:bg-slate-100">Clear</button>
+        <button id="importBtn"
+          class="text-sm px-3 py-2 rounded-xl border border-slate-300 hover:bg-slate-100">Import</button>
+        <button id="exportBtn"
+          class="text-sm px-3 py-2 rounded-xl border border-slate-300 hover:bg-slate-100">Export</button>
+        <input id="fileInput" type="file" accept=".json,.csv" class="hidden" />
+      </div>
+    </div>
+  </header>
+
+  <main class="container mx-auto grid grid-cols-1 md:grid-cols-12 gap-6 py-6">
+    <!-- Sidebar Filters -->
+    <aside class="md:col-span-3 lg:col-span-2">
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 space-y-4">
+        <h2 class="text-lg font-semibold">Filters</h2>
+        <div>
+          <label class="block text-sm font-medium mb-1">Country</label>
+          <select id="filterCountry" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"></select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Year</label>
+          <select id="filterYear" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"></select>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-sm font-medium mb-1">Denomination</label>
+            <select id="filterDenomination"
+              class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"></select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Currency</label>
+            <select id="filterCurrency" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"></select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Value (est.)</label>
+          <div class="flex items-center gap-2">
+            <input id="filterValueMin" type="number" placeholder="Min"
+              class="w-24 rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+            <span class="text-slate-500">—</span>
+            <input id="filterValueMax" type="number" placeholder="Max"
+              class="w-24 rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+            <select id="filterValueCurrency" class="rounded-xl border border-slate-300 px-2 py-2 text-sm">
+              <option>USD</option>
+              <option>GBP</option>
+              <option>EUR</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Special</label>
+          <select id="filterSpecial" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm">
+            <option value="">Any</option>
+            <option value="true">Special Edition</option>
+            <option value="false">Standard</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Condition</label>
+          <select id="filterCondition" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm">
+            <option value="">Any</option>
+            <option>Mint</option>
+            <option>Used</option>
+            <option>Hinged</option>
+            <option>Unmounted Mint</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Series</label>
+          <select id="filterSeries" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"></select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Tags</label>
+          <input id="filterTags" type="text" placeholder="e.g. definitive, commemorative"
+            class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+        </div>
+        <div class="flex items-center justify-between pt-2">
+          <button id="resetFilters"
+            class="text-sm px-3 py-2 rounded-xl border border-slate-300 hover:bg-slate-100">Reset</button>
+          <div class="text-xs text-slate-500" id="resultCount"></div>
+        </div>
+      </div>
+      <div class="mt-4 bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+        <h3 class="font-semibold mb-2">Sort</h3>
+        <select id="sortBy" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm">
+          <option value="date_desc">Date (new→old)</option>
+          <option value="date_asc">Date (old→new)</option>
+          <option value="value_desc">Value (high→low)</option>
+          <option value="value_asc">Value (low→high)</option>
+          <option value="country_asc">Country A→Z</option>
+        </select>
+      </div>
+    </aside>
+
+    <!-- Content -->
+    <section class="md:col-span-9 lg:col-span-10">
+      <nav id="breadcrumbs" class="text-sm text-slate-600 mb-3"></nav>
+      <div id="activeFilters" class="flex flex-wrap gap-2 mb-4"></div>
+      <div id="grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"></div>
+      <div id="emptyState" class="hidden text-slate-600 text-center py-24">
+        <p class="text-lg">No stamps match your filters.</p>
+      </div>
+      <div id="pager" class="flex items-center justify-center gap-2 mt-6"></div>
+    </section>
+  </main>
+
+  <!-- Lightbox / Modal -->
+  <div id="lightbox" class="hidden fixed inset-0 z-50 items-center justify-center">
+    <div class="absolute inset-0 bg-black/60"></div>
+    <div class="relative bg-white rounded-2xl shadow-xl max-w-3xl w-[92vw] p-4 md:p-6">
+      <button id="closeLightbox"
+        class="absolute top-2 right-2 rounded-full border border-slate-300 w-9 h-9 flex items-center justify-center hover:bg-slate-100"
+        aria-label="Close">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-5 h-5">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18 18 6M6 6l12 12" />
+        </svg>
+      </button>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+        <img id="lbImage" src="" alt="Stamp" class="w-full h-auto rounded-xl object-contain max-h-[70vh]" />
+        <div>
+          <h3 id="lbTitle" class="text-lg font-semibold"></h3>
+          <p id="lbSubtitle" class="text-sm text-slate-600 mb-2"></p>
+          <dl id="lbDetails" class="text-sm grid grid-cols-1 sm:grid-cols-2 gap-y-1 gap-x-4"></dl>
+          <div class="mt-3">
+            <h4 class="font-semibold">Notes</h4>
+            <p id="lbNotes" class="text-sm text-slate-700 whitespace-pre-wrap"></p>
+          </div>
+          <div class="mt-3 flex items-center gap-2">
+            <button id="prevInLightbox"
+              class="text-sm px-3 py-2 rounded-xl border border-slate-300 hover:bg-slate-100">Prev</button>
+            <button id="nextInLightbox"
+              class="text-sm px-3 py-2 rounded-xl border border-slate-300 hover:bg-slate-100">Next</button>
+            <a id="downloadImage" href="#" download
+              class="ml-auto text-sm px-3 py-2 rounded-xl border border-slate-300 hover:bg-slate-100">Download</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JSON data (you can replace this block with your own file loader/import) -->
+  <script id="stamp-data" type="application/json">{
+    "meta": {
+      "collectionName": "Tim's Stamps",
+      "currencyDefault": "GBP"
+    },
+    "stamps": [
+      {
+        "id": "gb-1952-1d-red",
+        "country": "United Kingdom",
+        "series": "Wilding Definitives",
+        "title": "Queen Elizabeth II 1d Red",
+        "date": "1952-12-01",
+        "year": 1952,
+        "denomination": "1d",
+        "currency": "GBP",
+        "value": 3.50,
+        "special": false,
+        "condition": "Used",
+        "format": "Single",
+        "color": "Carmine",
+        "perforation": "15x14",
+        "watermark": "St. Edward's Crown",
+        "printingMethod": "Recess",
+        "catalog": {"SG": "515", "Scott": "317"},
+        "tags": ["definitive","QEII"],
+        "acquired": {"method": "Purchase", "date": "2020-05-10", "pricePaid": 1.2, "seller": "eBay"},
+        "image": "https://images.unsplash.it/600/800?image=1080&random=1",
+        "thumbnail": "https://images.unsplash.it/200/300?image=1080&random=1",
+        "specialFeatures": ["Engraved"],
+        "notes": "Light cancel, decent centering."
+      },
+      {
+        "id": "gb-1966-world-cup",
+        "country": "United Kingdom",
+        "series": "Commemoratives 1966",
+        "title": "1966 World Cup 1s3d",
+        "date": "1966-06-01",
+        "year": 1966,
+        "denomination": "1s3d",
+        "currency": "GBP",
+        "value": 8.00,
+        "special": true,
+        "condition": "Mint",
+        "format": "Single",
+        "color": "Multicolor",
+        "perforation": "14",
+        "watermark": "None",
+        "printingMethod": "Photogravure",
+        "catalog": {"SG": "712", "Scott": "443"},
+        "tags": ["football","commemorative"],
+        "acquired": {"method": "Gift", "date": "2015-12-25"},
+        "image": "https://images.unsplash.it/600/800?image=1067&random=2",
+        "thumbnail": "https://images.unsplash.it/200/300?image=1067&random=2",
+        "specialFeatures": ["Commemorative"],
+        "notes": "Iconic set, strong colors."
+      },
+      {
+        "id": "us-1918-inverted-jenny",
+        "country": "United States",
+        "series": "Airmail",
+        "title": "Inverted Jenny 24¢",
+        "date": "1918-05-10",
+        "year": 1918,
+        "denomination": "24¢",
+        "currency": "USD",
+        "value": 1500000,
+        "special": true,
+        "condition": "Used",
+        "format": "Single",
+        "color": "Blue & Red",
+        "perforation": "11",
+        "watermark": "None",
+        "printingMethod": "Offset",
+        "catalog": {"Scott": "C3a"},
+        "tags": ["rarity","error"],
+        "acquired": {"method": "Inherited", "date": "2001-01-01"},
+        "image": "https://images.unsplash.it/600/800?image=1059&random=3",
+        "thumbnail": "https://images.unsplash.it/200/300?image=1059&random=3",
+        "specialFeatures": ["Printing error"],
+        "notes": "If only! Placeholder sample."
+      },
+      {
+        "id": "jp-1993-ginkgo",
+        "country": "Japan",
+        "series": "Prefectures",
+        "title": "Ginkgo Leaves 62¥",
+        "date": "1993-09-01",
+        "year": 1993,
+        "denomination": "62",
+        "currency": "JPY",
+        "value": 2.00,
+        "special": false,
+        "condition": "Mint",
+        "format": "Single",
+        "color": "Green",
+        "perforation": "13",
+        "watermark": "None",
+        "printingMethod": "Lithography",
+        "catalog": {"JSCA": "P-93"},
+        "tags": ["flora","definitive"],
+        "acquired": {"method": "Purchase", "date": "2018-07-19", "pricePaid": 0.5},
+        "image": "https://images.unsplash.it/600/800?image=1044&random=4",
+        "thumbnail": "https://images.unsplash.it/200/300?image=1044&random=4",
+        "specialFeatures": ["Flora"],
+        "notes": "Clean gum."
+      },
+      {
+        "id": "fr-1937-paris-expo",
+        "country": "France",
+        "series": "International Exhibition",
+        "title": "Paris Expo 65c",
+        "date": "1937-05-24",
+        "year": 1937,
+        "denomination": "65c",
+        "currency": "FRF",
+        "value": 25.0,
+        "special": true,
+        "condition": "Used",
+        "format": "Single",
+        "color": "Brown",
+        "perforation": "13",
+        "watermark": "None",
+        "printingMethod": "Intaglio",
+        "catalog": {"Yvert": "365"},
+        "tags": ["expo","architecture"],
+        "acquired": {"method": "Purchase", "date": "2012-03-14", "pricePaid": 10.0},
+        "image": "https://images.unsplash.it/600/800?image=1033&random=5",
+        "thumbnail": "https://images.unsplash.it/200/300?image=1033&random=5",
+        "specialFeatures": ["Commemorative"],
+        "notes": "Corner cancel, nice vignette."
+      },
+      {
+        "id": "de-1923-hyperinflation-1b",
+        "country": "Germany",
+        "series": "Hyperinflation",
+        "title": "1 Billion Mark",
+        "date": "1923-10-01",
+        "year": 1923,
+        "denomination": "1,000,000,000",
+        "currency": "ℳ",
+        "value": 15.0,
+        "special": false,
+        "condition": "Used",
+        "format": "Single",
+        "color": "Violet",
+        "perforation": "14",
+        "watermark": "Rosette",
+        "printingMethod": "Typography",
+        "catalog": {"Michel": "337"},
+        "tags": ["history","economics"],
+        "acquired": {"method": "Purchase", "date": "2010-08-09", "pricePaid": 4.0},
+        "image": "https://images.unsplash.it/600/800?image=1011&random=6",
+        "thumbnail": "https://images.unsplash.it/200/300?image=1011&random=6",
+        "specialFeatures": [],
+        "notes": "Classic Weimar piece."
+      },
+      {
+        "id": "it-2000-millennium",
+        "country": "Italy",
+        "series": "Millennium",
+        "title": "Anno 2000 800L",
+        "date": "2000-01-01",
+        "year": 2000,
+        "denomination": "800",
+        "currency": "ITL",
+        "value": 1.5,
+        "special": true,
+        "condition": "Mint",
+        "format": "Single",
+        "color": "Multicolor",
+        "perforation": "13.25",
+        "watermark": "None",
+        "printingMethod": "Lithography",
+        "catalog": {"Sassone": "2484"},
+        "tags": ["millennium","commemorative"],
+        "acquired": {"method": "Purchase", "date": "2021-11-11", "pricePaid": 1.0},
+        "image": "https://images.unsplash.it/600/800?image=999&random=7",
+        "thumbnail": "https://images.unsplash.it/200/300?image=999&random=7",
+        "specialFeatures": ["Commemorative"],
+        "notes": "Common modern commemorative."
+      },
+      {
+        "id": "nz-1901-kiwi",
+        "country": "New Zealand",
+        "series": "Pictorials",
+        "title": "Kiwi 1d",
+        "date": "1901-06-01",
+        "year": 1901,
+        "denomination": "1d",
+        "currency": "NZD",
+        "value": 40.0,
+        "special": false,
+        "condition": "Used",
+        "format": "Single",
+        "color": "Green",
+        "perforation": "14",
+        "watermark": "NZ & Star",
+        "printingMethod": "Recess",
+        "catalog": {"CP": "E1a"},
+        "tags": ["fauna","kiwi"],
+        "acquired": {"method": "Purchase", "date": "2016-04-02", "pricePaid": 12.0},
+        "image": "https://images.unsplash.it/600/800?image=980&random=8",
+        "thumbnail": "https://images.unsplash.it/200/300?image=980&random=8",
+        "specialFeatures": ["Pictorial"],
+        "notes": "Attractive design."
+      }
+    ]
+  }</script>
+
+  <!-- JSON-LD (updated dynamically) -->
+  <script type="application/ld+json" id="jsonld">{
+    "@context": "https://schema.org",
+    "@type": "Collection",
+    "name": "Virtual Stamp Collection",
+    "about": "Philately stamps",
+    "url": ""\,
+    "hasPart": []
+  }</script>
+
+  <script>
+    // --- Utilities ---
+    const slug = s => String(s || '').toLowerCase().trim()
+      .replace(/&/g, ' and ')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+
+    const unique = arr => [...new Set(arr.filter(Boolean))];
+
+    const fmtMoney = (n, c = 'GBP') => {
+      if (typeof n !== 'number' || isNaN(n)) return '';
+      try { return new Intl.NumberFormat(undefined, { style: 'currency', currency: c }).format(n); }
+      catch { return n.toFixed(2) + ' ' + c; }
+    };
+
+    const parseDate = d => d ? new Date(d) : null;
+
+    // --- Data Layer ---
+    let DB = { meta: { currencyDefault: 'GBP' }, stamps: [] };
+
+    function loadInitialData() {
+      try {
+        DB = JSON.parse(document.getElementById('stamp-data').textContent);
+      } catch (e) {
+        console.error('Failed to parse embedded data', e);
+      }
+    }
+
+    // --- State ---
+    const state = {
+      q: '',
+      country: '',
+      year: '',
+      denomination: '',
+      currency: '',
+      special: '', // '', 'true', 'false'
+      condition: '',
+      series: '',
+      tags: '',
+      vmin: '',
+      vmax: '',
+      vcur: 'GBP',
+      sortBy: 'date_desc',
+      page: 1,
+      perPage: 20
+    };
+
+    // --- Router (SEO-friendly URLs via History API) ---
+    function buildPathFromState() {
+      const segs = [];
+      if (state.country) segs.push('country', slug(state.country));
+      if (state.series) segs.push('series', slug(state.series));
+      if (state.year) segs.push('year', String(state.year));
+      if (state.denomination) segs.push('denomination', slug(state.denomination));
+      if (state.condition) segs.push('condition', slug(state.condition));
+      if (state.special) segs.push('special', state.special);
+      if (state.q) segs.push('search', slug(state.q));
+      const path = '/' + segs.join('/');
+      const params = new URLSearchParams();
+      if (state.vmin) params.set('vmin', state.vmin);
+      if (state.vmax) params.set('vmax', state.vmax);
+      if (state.vcur) params.set('vcur', state.vcur);
+      if (state.currency) params.set('currency', state.currency);
+      if (state.tags) params.set('tags', state.tags);
+      if (state.sortBy && state.sortBy !== 'date_desc') params.set('sort', state.sortBy);
+      if (state.page && state.page !== 1) params.set('page', state.page);
+      const qs = params.toString();
+      return qs ? path + '?' + qs : path;
+    }
+
+    function readStateFromUrl() {
+      const { pathname, search } = location;
+      const segs = pathname.split('/').filter(Boolean);
+      for (let i = 0; i < segs.length; i += 2) {
+        const key = segs[i];
+        const val = segs[i + 1] ? decodeURIComponent(segs[i + 1]).replace(/-/g, ' ') : '';
+        switch (key) {
+          case 'country': state.country = findBySlug(DB.stamps.map(s => s.country), segs[i + 1]) || ''; break;
+          case 'series': state.series = findBySlug(DB.stamps.map(s => s.series), segs[i + 1]) || ''; break;
+          case 'year': state.year = val; break;
+          case 'denomination': state.denomination = findBySlug(DB.stamps.map(s => s.denomination), segs[i + 1]) || ''; break;
+          case 'condition': state.condition = findBySlug(['Mint', 'Used', 'Hinged', 'Unmounted Mint'], segs[i + 1]) || ''; break;
+          case 'special': state.special = segs[i + 1] || ''; break;
+          case 'search': state.q = val; break;
+        }
+      }
+      const qs = new URLSearchParams(search);
+      state.vmin = qs.get('vmin') || '';
+      state.vmax = qs.get('vmax') || '';
+      state.vcur = qs.get('vcur') || DB.meta.currencyDefault || 'GBP';
+      state.currency = qs.get('currency') || '';
+      state.tags = qs.get('tags') || '';
+      state.sortBy = qs.get('sort') || 'date_desc';
+      state.page = Number(qs.get('page') || '1');
+    }
+
+    function findBySlug(list, slugStr) {
+      const map = new Map(list.filter(Boolean).map(v => [slug(v), v]));
+      return map.get(slugStr);
+    }
+
+    function pushState() {
+      const url = buildPathFromState();
+      history.pushState(state, '', url);
+      updateMetaForSEO();
+      renderBreadcrumbs();
+    }
+
+    window.addEventListener('popstate', () => {
+      readStateFromUrl();
+      syncControls();
+      render();
+    });
+
+    // --- Rendering ---
+    function render() {
+      const filtered = filterStamps(DB.stamps);
+      const sorted = sortStamps(filtered);
+      const total = sorted.length;
+      const { page, perPage } = state;
+      const start = (page - 1) * perPage;
+      const items = sorted.slice(start, start + perPage);
+      $('#grid').empty();
+      if (!items.length) {
+        $('#emptyState').removeClass('hidden');
+      } else {
+        $('#emptyState').addClass('hidden');
+      }
+      for (const s of items) {
+        const card = $(
+          `<article class="group bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <button class="block w-full text-left" data-id="${s.id}" aria-label="Open ${s.title}">
+              <div class="aspect-[3/4] bg-slate-100 overflow-hidden">
+                <img loading="lazy" src="${s.thumbnail || s.image}" alt="${escapeHtml(s.title)}" class="w-full h-full object-cover group-hover:scale-[1.02] transition-transform"/>
+              </div>
+              <div class="p-3">
+                <h3 class="text-sm font-medium line-clamp-1">${escapeHtml(s.title)}</h3>
+                <p class="text-xs text-slate-600 line-clamp-1">${escapeHtml(s.country)} · ${s.year || ''} · ${escapeHtml(s.denomination)}${s.currency ? (' ' + escapeHtml(s.currency)) : ''}</p>
+                <div class="mt-1 flex items-center justify-between text-xs">
+                  <span class="text-slate-600">${s.special ? 'Special' : 'Standard'}</span>
+                  <span class="font-medium">${fmtMoney(s.value, s.currencyValue || s.currency || DB.meta.currencyDefault)}</span>
+                </div>
+              </div>
+            </button>
+          </article>`
+        );
+        card.find('button').on('click', () => openLightbox(s.id));
+        $('#grid').append(card);
+      }
+      $('#resultCount').text(`${total} result${total === 1 ? '' : 's'}`);
+      renderActiveFilters();
+      renderPager(total);
+      updateJsonLd(items);
+      updateMetaForSEO(total);
+    }
+
+    function escapeHtml(str) {
+      return String(str || '').replace(/[&<>"']/g, s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;' }[s]));
+    }
+
+    function filterStamps(stamps) {
+      const q = state.q.trim().toLowerCase();
+      const tagList = state.tags ? state.tags.split(',').map(s => s.trim().toLowerCase()).filter(Boolean) : [];
+      const vmin = state.vmin ? Number(state.vmin) : -Infinity;
+      const vmax = state.vmax ? Number(state.vmax) : Infinity;
+      return stamps.filter(s => {
+        if (state.country && s.country !== state.country) return false;
+        if (state.series && s.series !== state.series) return false;
+        if (state.year && String(s.year) !== String(state.year)) return false;
+        if (state.denomination && s.denomination !== state.denomination) return false;
+        if (state.currency && s.currency !== state.currency) return false;
+        if (state.condition && s.condition !== state.condition) return false;
+        if (state.special && String(s.special) !== state.special) return false;
+        if (!(s.value >= vmin && s.value <= vmax)) return false;
+        if (state.vcur && s.currency && state.vcur !== s.currency) { /* optional conversion could go here */ }
+        if (q) {
+          const hay = [s.title, s.country, s.series, s.notes, (s.tags || []).join(' '), s.denomination, s.color, s.format, s.perforation, s.watermark, JSON.stringify(s.catalog || {})].join(' ').toLowerCase();
+          if (!hay.includes(q)) return false;
+        }
+        if (tagList.length) {
+          const have = (s.tags || []).map(t => String(t).toLowerCase());
+          if (!tagList.every(t => have.includes(t))) return false;
+        }
+        return true;
+      });
+    }
+
+    function sortStamps(stamps) {
+      const by = state.sortBy;
+      const arr = [...stamps];
+      arr.sort((a, b) => {
+        switch (by) {
+          case 'date_asc': return (parseDate(a.date) - parseDate(b.date)) || (a.year - b.year);
+          case 'date_desc': return (parseDate(b.date) - parseDate(a.date)) || (b.year - a.year);
+          case 'value_asc': return (a.value || 0) - (b.value || 0);
+          case 'value_desc': return (b.value || 0) - (a.value || 0);
+          case 'country_asc': return String(a.country).localeCompare(String(b.country));
+          default: return 0;
+        }
+      });
+      return arr;
+    }
+
+    function renderActiveFilters() {
+      const chips = [];
+      const add = (label, onClear) => chips.push(`<span class='inline-flex items-center gap-1 text-xs bg-slate-100 border border-slate-300 rounded-full px-2 py-1'><span>${label}</span><button class='text-slate-500 hover:text-slate-700' aria-label='Clear' data-clear='${onClear}'>×</button></span>`);
+      if (state.country) add(`Country: ${state.country}`, 'country');
+      if (state.series) add(`Series: ${state.series}`, 'series');
+      if (state.year) add(`Year: ${state.year}`, 'year');
+      if (state.denomination) add(`Denomination: ${state.denomination}`, 'denomination');
+      if (state.currency) add(`Currency: ${state.currency}`, 'currency');
+      if (state.condition) add(`Condition: ${state.condition}`, 'condition');
+      if (state.special) add(`Special: ${state.special === 'true' ? 'Yes' : 'No'}`, 'special');
+      if (state.vmin || state.vmax) add(`Value: ${state.vmin || '0'}-${state.vmax || '∞'} ${state.vcur || ''}`, 'value');
+      if (state.tags) add(`Tags: ${state.tags}`, 'tags');
+      if (state.q) add(`Search: ${state.q}`, 'q');
+      $('#activeFilters').html(chips.join(''));
+      $('#activeFilters [data-clear]').on('click', function () {
+        const key = $(this).data('clear');
+        if (key === 'value') { state.vmin = ''; state.vmax = ''; }
+        else state[key] = '';
+        state.page = 1;
+        syncControls();
+        pushState();
+        render();
+      });
+    }
+
+    function renderPager(total) {
+      const pages = Math.max(1, Math.ceil(total / state.perPage));
+      const p = Math.min(state.page, pages);
+      state.page = p;
+      const btn = (n, label = n) => `<button class='px-3 py-2 rounded-xl border ${n === p ? 'bg-slate-900 text-white border-slate-900' : 'border-slate-300 hover:bg-slate-100'}' data-page='${n}'>${label}</button>`;
+      const items = [];
+      if (pages > 1) {
+        if (p > 1) items.push(btn(p - 1, 'Prev'));
+        for (let i = 1; i <= pages; i++) {
+          if (i === 1 || i === pages || Math.abs(i - p) <= 2) items.push(btn(i));
+          else if (items[items.length - 1] !== '…') items.push('…');
+        }
+        if (p < pages) items.push(btn(p + 1, 'Next'));
+      }
+      $('#pager').html(items.join(''));
+      $('#pager [data-page]').on('click', function () {
+        state.page = Number($(this).data('page'));
+        pushState();
+        render();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    }
+
+    function renderBreadcrumbs() {
+      const crumbs = [{ name: 'Home', href: '/' }];
+      if (state.country) crumbs.push({ name: state.country, href: `/country/${slug(state.country)}` });
+      if (state.series) crumbs.push({ name: state.series, href: `/country/${slug(state.country)}/series/${slug(state.series)}` });
+      if (state.year) crumbs.push({ name: String(state.year), href: buildPathFromState() });
+      const html = crumbs.map((c, i) => i < crumbs.length - 1
+        ? `<a href="${c.href}" class="text-indigo-600 hover:underline">${escapeHtml(c.name)}</a><span class='mx-1'>/</span>`
+        : `<span>${escapeHtml(c.name)}</span>`
+      ).join('');
+      $('#breadcrumbs').html(html);
+      $('#breadcrumbs a').on('click', function (e) { e.preventDefault(); history.pushState({}, '', this.getAttribute('href')); readStateFromUrl(); syncControls(); render(); });
+    }
+
+    function updateJsonLd(items) {
+      const ld = {
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        "itemListElement": items.map((s, i) => ({
+          "@type": "ListItem",
+          "position": i + 1,
+          "url": location.origin + '/' + ['country', slug(s.country), 'series', slug(s.series || ''), 'year', s.year].filter(Boolean).join('/'),
+          "name": s.title
+        }))
+      };
+      document.getElementById('jsonld').textContent = JSON.stringify(ld);
+    }
+
+    function updateMetaForSEO(total) {
+      const parts = ['Virtual Stamp Collection'];
+      if (state.country) parts.unshift(state.country);
+      if (state.series) parts.unshift(state.series);
+      if (state.year) parts.unshift(String(state.year));
+      document.title = parts.join(' · ');
+      const desc = `Browse ${total || ''} stamps${state.country ? (' from ' + state.country) : ''}${state.year ? (' issued in ' + state.year) : ''}. Filter by denomination, value, series, condition, and more.`;
+      document.querySelector('meta[name="description"]').setAttribute('content', desc);
+    }
+
+    // --- Lightbox ---
+    let lightboxIndex = -1; // index in current filtered+sorted list
+    function openLightbox(id) {
+      const filtered = sortStamps(filterStamps(DB.stamps));
+      lightboxIndex = filtered.findIndex(s => s.id === id);
+      if (lightboxIndex < 0) return;
+      const s = filtered[lightboxIndex];
+      $('#lbImage').attr('src', s.image).attr('alt', s.title);
+      $('#lbTitle').text(`${s.title}`);
+      $('#lbSubtitle').text(`${s.country} · ${s.year} · ${s.denomination}${s.currency ? (' ' + s.currency) : ''}`);
+      const details = [
+        ['Series', s.series],
+        ['Condition', s.condition],
+        ['Format', s.format],
+        ['Color', s.color],
+        ['Perforation', s.perforation],
+        ['Watermark', s.watermark],
+        ['Printing', s.printingMethod],
+        ['Special', s.special ? 'Yes' : 'No'],
+        ['Catalog', Object.entries(s.catalog || {}).map(([k, v]) => `${k}: ${v}`).join(', ')],
+        ['Value', fmtMoney(s.value, s.currencyValue || s.currency || DB.meta.currencyDefault)],
+        ['Acquired', s.acquired ? `${s.acquired.method} ${s.acquired.date ? ('· ' + s.acquired.date) : ''}` : ''],
+        ['Tags', (s.tags || []).join(', ')]
+      ];
+      const html = details.filter(d => d[1]).map(d => `<dt class='text-slate-500'>${d[0]}</dt><dd class='font-medium mb-2'>${escapeHtml(d[1])}</dd>`).join('');
+      $('#lbDetails').html(html);
+      $('#lbNotes').text(s.notes || '');
+      $('#downloadImage').attr('href', s.image);
+      showLightbox();
+    }
+
+    function showLightbox() {
+      $('#lightbox').removeClass('hidden').addClass('flex');
+    }
+    function hideLightbox() {
+      $('#lightbox').addClass('hidden').removeClass('flex');
+    }
+
+    $('#closeLightbox').on('click', hideLightbox);
+    $('#lightbox').on('click', function (e) { if (e.target === this) hideLightbox(); });
+    $('#nextInLightbox').on('click', () => { moveLightbox(1); });
+    $('#prevInLightbox').on('click', () => { moveLightbox(-1); });
+
+    function moveLightbox(delta) {
+      const filtered = sortStamps(filterStamps(DB.stamps));
+      if (!filtered.length) return;
+      lightboxIndex = (lightboxIndex + delta + filtered.length) % filtered.length;
+      const s = filtered[lightboxIndex];
+      openLightbox(s.id);
+    }
+
+    // --- Controls Sync ---
+    function populateOptions() {
+      const countries = unique(DB.stamps.map(s => s.country)).sort((a, b) => a.localeCompare(b));
+      const years = unique(DB.stamps.map(s => s.year)).sort((a, b) => b - a);
+      const denoms = unique(DB.stamps.map(s => s.denomination)).sort();
+      const currs = unique(DB.stamps.map(s => s.currency)).sort();
+      const series = unique(DB.stamps.map(s => s.series)).sort((a, b) => a.localeCompare(b));
+      fillSelect('#filterCountry', [''].concat(countries));
+      fillSelect('#filterYear', [''].concat(years));
+      fillSelect('#filterDenomination', [''].concat(denoms));
+      fillSelect('#filterCurrency', [''].concat(currs));
+      fillSelect('#filterSeries', [''].concat(series));
+      $('#filterValueCurrency').val(DB.meta.currencyDefault || 'GBP');
+    }
+
+    function fillSelect(sel, values) {
+      const $sel = $(sel);
+      const current = $sel.val();
+      $sel.empty();
+      $sel.append(`<option value="">Any</option>`);
+      for (const v of values) {
+        $sel.append(`<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`);
+      }
+      if (current && values.includes(current)) {
+        $sel.val(current);
+      }
+    }
+
+    function escapeHtml(str) {
+      return String(str || '').replace(/[&<>"']/g, s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;' }[s]));
+    }
+
+
+    function syncControls() {
+      $('#searchInput').val(state.q);
+      $('#filterCountry').val(state.country);
+      $('#filterYear').val(state.year);
+      $('#filterDenomination').val(state.denomination);
+      $('#filterCurrency').val(state.currency);
+      $('#filterSpecial').val(state.special);
+      $('#filterCondition').val(state.condition);
+      $('#filterSeries').val(state.series);
+      $('#filterTags').val(state.tags);
+      $('#filterValueMin').val(state.vmin);
+      $('#filterValueMax').val(state.vmax);
+      $('#filterValueCurrency').val(state.vcur);
+      $('#sortBy').val(state.sortBy);
+    }
+
+    function bindControls() {
+      $('#searchInput').on('input', debounce(() => { state.q = $('#searchInput').val().trim(); state.page = 1; pushState(); render(); }, 250));
+      $('#clearSearch').on('click', () => { state.q = ''; $('#searchInput').val(''); state.page = 1; pushState(); render(); });
+      $('#filterCountry, #filterYear, #filterDenomination, #filterCurrency, #filterSpecial, #filterCondition, #filterSeries, #sortBy')
+        .on('change', function () { state[this.id.replace('filter', '').toLowerCase()] = this.value; if (this.id === 'sortBy') state.sortBy = this.value; state.page = 1; pushState(); render(); });
+      $('#filterTags, #filterValueMin, #filterValueMax, #filterValueCurrency')
+        .on('input', debounce(function () {
+          state.tags = $('#filterTags').val();
+          state.vmin = $('#filterValueMin').val();
+          state.vmax = $('#filterValueMax').val();
+          state.vcur = $('#filterValueCurrency').val();
+          state.page = 1; pushState(); render();
+        }, 300));
+      $('#resetFilters').on('click', () => { Object.assign(state, { q: '', country: '', year: '', denomination: '', currency: '', special: '', condition: '', series: '', tags: '', vmin: '', vmax: '', vcur: DB.meta.currencyDefault || 'GBP', sortBy: 'date_desc', page: 1 }); syncControls(); pushState(); render(); });
+
+      // Import/Export
+      $('#exportBtn').on('click', () => {
+        const blob = new Blob([JSON.stringify(DB, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = Object.assign(document.createElement('a'), { href: url, download: 'stamps.json' });
+        document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+      });
+      $('#importBtn').on('click', () => $('#fileInput').click());
+      $('#fileInput').on('change', handleFileImport);
+    }
+
+    function handleFileImport(ev) {
+      const file = ev.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const text = reader.result;
+        try {
+          if (file.name.endsWith('.json')) {
+            DB = JSON.parse(text);
+          } else if (file.name.endsWith('.csv')) {
+            DB = csvToDb(text);
+          } else {
+            alert('Unsupported file type. Use .json or .csv');
+            return;
+          }
+          populateOptions();
+          state.page = 1; pushState(); syncControls(); render();
+        } catch (err) {
+          console.error(err); alert('Failed to import file');
+        }
+      };
+      reader.readAsText(file);
+      ev.target.value = '';
+    }
+
+    function csvToDb(csv) {
+      // Minimal CSV parser (handles quotes). Expects headers matching properties below.
+      const rows = [];
+      const re = /(\"([^\"]|\\\")*\"|[^\n\r"]+|\r?\n|\r|^)/gm;
+      const lines = csv.split(/\r?\n/);
+      const headers = lines.shift().split(',').map(h => h.trim());
+      for (const line of lines) { if (!line.trim()) continue; rows.push(parseCsvLine(line)); }
+      const stamps = rows.map(obj => ({
+        id: obj.id || slug(`${obj.country}-${obj.year}-${obj.title}`),
+        country: obj.country || '',
+        series: obj.series || '',
+        title: obj.title || '',
+        date: obj.date || '',
+        year: Number(obj.year) || '',
+        denomination: obj.denomination || '',
+        currency: obj.currency || '',
+        value: Number(obj.value) || 0,
+        special: /^(true|1|yes)$/i.test(obj.special || ''),
+        condition: obj.condition || '',
+        format: obj.format || '',
+        color: obj.color || '',
+        perforation: obj.perforation || '',
+        watermark: obj.watermark || '',
+        printingMethod: obj.printingMethod || obj.printing || '',
+        catalog: tryParseJson(obj.catalog) || {},
+        tags: (obj.tags || '').split('|').filter(Boolean),
+        acquired: tryParseJson(obj.acquired) || {},
+        image: obj.image || '',
+        thumbnail: obj.thumbnail || obj.image || '',
+        specialFeatures: (obj.specialFeatures || '').split('|').filter(Boolean),
+        notes: obj.notes || ''
+      }));
+      return { meta: { currencyDefault: 'GBP' }, stamps };
+
+      function parseCsvLine(str) {
+        const out = [];
+        let i = 0, inQuotes = false, field = '';
+        while (i < str.length) {
+          const ch = str[i];
+          if (ch === '"') {
+            if (inQuotes && str[i + 1] === '"') { field += '"'; i++; }
+            else inQuotes = !inQuotes;
+          } else if (ch === ',' && !inQuotes) { out.push(field); field = ''; }
+          else { field += ch; }
+          i++;
+        }
+        out.push(field);
+        const obj = {};
+        headers.forEach((h, idx) => obj[h] = out[idx] ? out[idx].trim() : '');
+        return obj;
+      }
+
+      function tryParseJson(s) { try { return JSON.parse(s); } catch { return {}; } }
+    }
+
+    const debounce = (fn, ms = 200) => { let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn.apply(this, args), ms); } };
+
+    // --- Init ---
+    $(function () {
+      loadInitialData();
+      populateOptions();
+      readStateFromUrl();
+      syncControls();
+      renderBreadcrumbs();
+      render();
+      bindControls();
+
+      // wire up listeners
+      $('#searchInput').on('input', e => { state.q = e.target.value; state.page = 1; pushState(); render(); });
+      $('#clearSearch').on('click', () => { state.q = ''; $('#searchInput').val(''); pushState(); render(); });
+      $('#filterCountry,#filterYear,#filterDenomination,#filterCurrency,#filterSpecial,#filterCondition,#filterSeries').on('change', function () {
+        state[this.id.replace('filter', '').toLowerCase()] = $(this).val();
+        state.page = 1; pushState(); render();
+      });
+      $('#filterTags').on('input', e => { state.tags = e.target.value; state.page = 1; pushState(); render(); });
+      $('#filterValueMin,#filterValueMax,#filterValueCurrency').on('input change', function () {
+        state.vmin = $('#filterValueMin').val(); state.vmax = $('#filterValueMax').val(); state.vcur = $('#filterValueCurrency').val();
+        state.page = 1; pushState(); render();
+      });
+      $('#sortBy').on('change', e => { state.sortBy = e.target.value; pushState(); render(); });
+      $('#resetFilters').on('click', () => {
+        Object.assign(state, { q: '', country: '', year: '', denomination: '', currency: '', special: '', condition: '', series: '', tags: '', vmin: '', vmax: '', vcur: DB.meta.currencyDefault || 'GBP', sortBy: 'date_desc', page: 1 });
+        syncControls();
+        pushState();
+        render();
+      });
+    });
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,49 @@
+.fade-enter {
+  opacity: 0;
+}
+.fade-enter-active {
+  opacity: 1;
+  transition: opacity 0.15s;
+}
+.fade-leave {
+  opacity: 1;
+}
+.fade-leave-active {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.zoom-enter {
+  transform: scale(0.95);
+  opacity: 0;
+}
+.zoom-enter-active {
+  transform: scale(1);
+  opacity: 1;
+  transition: transform 0.15s, opacity 0.15s;
+}
+.zoom-leave {
+  transform: scale(1);
+  opacity: 1;
+}
+.zoom-leave-active {
+  transform: scale(0.95);
+  opacity: 0;
+  transition: transform 0.15s, opacity 0.15s;
+}
+.tooltip:after {
+  content: attr(data-tip);
+  position: absolute;
+  white-space: nowrap;
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  transform: translateY(-100%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.1s;
+}
+.tooltip:hover:after {
+  opacity: 1;
+}

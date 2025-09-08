@@ -1,0 +1,14 @@
+field,display,type,navigation,filter,search
+id,ID,string,false,false,false
+type,Type,lookup,true,true,true
+category,Category,lookup,true,true,true
+name,Name,string,true,true,true
+color,Color,string,false,true,true
+hardness,Hardness,number,false,true,false
+weight,Weight (g),number,false,false,false
+locationFound,Location Found,string,false,true,true
+yearFound,Year Found,number,false,true,false
+notes,Notes,string,false,false,true
+tags,Tags,string,false,true,true
+image,Image URL,string,false,false,false
+thumbnail,Thumbnail URL,string,false,false,false

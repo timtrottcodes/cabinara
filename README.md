@@ -1,55 +1,90 @@
-# Philatopia
+# 🗂️ Cabinara -- The Universal Collection Showcase
 
-Philatopia is a web application designed for stamp collectors to create, manage, and explore their virtual stamp collections. Whether you're a hobbyist or a serious philatelist, Philatopia provides an intuitive, beautiful interface to organize and showcase your stamps.
+**Cabinara** is a lightweight, schema-driven web application for
+curators, collectors, and enthusiasts who want to present their
+collections online in a flexible and beautiful way.
 
-## Features
+Inspired by the historic *Cabinets of Curiosities*, Cabinara transforms
+CSV data into a fully navigable, searchable, and filterable digital
+showcase. Whether you collect stamps, coins, postcards, trading cards,
+or rare artifacts, Cabinara adapts to your data structure and puts your
+treasures on display.
 
-* **Virtual Collection**: Add and organize your stamps with images, descriptions, and metadata.
-* **Filtering & Search**: Quickly find stamps by country, year, theme, or custom tags.
-* **Lightbox Viewing**: Zoom in on stamps for detailed inspection.
-* **SEO-Friendly URLs**: Each stamp has a unique, shareable URL.
-* **Import & Export**: Easily migrate your collection via JSON files.
-* **Responsive Design**: Works seamlessly on desktop, tablet, and mobile.
+------------------------------------------------------------------------
 
-## Installation
+## ✨ Features
 
-1. Clone the repository:
+-   **Schema-driven design** -- define fields, filters, categories, and
+    search options in a simple CSV.\
+-   **Dynamic navigation** -- categories and filters are generated
+    automatically from your dataset.\
+-   **Universal collections** -- works with stamps, coins, books, vinyl,
+    or any item type you define.\
+-   **Single-page app** -- built with HTML5, Tailwind CSS, and jQuery
+    for simplicity and speed.\
+-   **SEO-friendly deep links** -- every category and item has an
+    indexable URL and metadata.\
+-   **Lightbox & modal support** -- clean, interactive item detail views
+    without leaving the page.\
+-   **Minimal setup** -- just drop in your CSV files, no database
+    required.
 
-```bash
-git clone https://github.com/yourusername/philatopia.git
-cd philatopia
-```
+------------------------------------------------------------------------
 
-2. Install dependencies:
+## 🏛️ Why Cabinara?
 
-```bash
-npm install
-```
+Cabinara reimagines the *cabinet of curiosities* for the digital age: a
+space where your personal collections can be preserved, organized, and
+shared with the world --- without technical complexity.
 
-3. Start the development server:
+------------------------------------------------------------------------
 
-```bash
-npm start
-```
+## 📂 Project Structure
 
-Open `http://localhost:3000` in your browser to view the app.
+    /cabinara
+      ├── index.html        # Main app page
+      ├── app.js            # Core logic (CSV loading, filtering, navigation)
+      ├── categories.csv    # Defines schema (fields, filters, categories)
+      ├── collection.csv    # Your collection data
+      ├── /assets           # Images, icons, CSS, JS
 
-## Usage
+------------------------------------------------------------------------
 
-* Add stamps by clicking the "Add Stamp" button.
-* Filter stamps using the sidebar search options.
-* Click a stamp image to open the lightbox view.
-* Export your collection to a JSON file for backup or sharing.
-* Import existing collections using the JSON import feature.
+## ⚡ Getting Started
 
-## Contributing
+1.  Clone the repository
 
-Contributions are welcome! Please open an issue or submit a pull request.
+    ``` bash
+    git clone https://github.com/your-username/cabinara.git
+    cd cabinara
+    ```
 
-## License
+2.  Place your `categories.csv` and `collection.csv` in the project
+    root.
 
-[MIT License](LICENSE)
+3.  Open `index.html` in your browser.
 
-## Acknowledgements
+✅ That's it --- your collection is live!
 
-Philatopia was inspired by the timeless hobby of stamp collecting and the desire to bring it into the digital age.
+------------------------------------------------------------------------
+
+## 🛠️ Customization
+
+-   Update `categories.csv` to change field names, filters, and
+    navigation.\
+-   Add styles in `tailwind.config.js` or custom CSS for branding.\
+-   Extend `app.js` if you want custom behaviors (sorting, extra
+    metadata, etc).
+
+------------------------------------------------------------------------
+
+## 📜 License
+
+MIT License. Free to use, modify, and share.
+
+------------------------------------------------------------------------
+
+## 🌐 Credits
+
+Built with ❤️ using **HTML5, Tailwind CSS, and jQuery**.\
+Inspired by the timeless Cabinets of Curiosities.

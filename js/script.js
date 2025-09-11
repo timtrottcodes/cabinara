@@ -36,21 +36,25 @@ const state = { q: "", filters: {}, sortBy: "", page: 1, perPage: 20 };
 // --- Filter & Sort ---
 function filterItems(items) {
   return items.filter((item) => {
-    // search
     if (state.q) {
       const hay = Object.values(item).join(" ").toLowerCase();
       if (!hay.includes(state.q.toLowerCase())) return false;
     }
-    // category filters
     for (const cat of DB.categories) {
       if (cat.filter === "true") {
-        const val = state.filters[cat.field] || "";
-        if (val && String(item[cat.field] || "") !== val) return false;
+        const val = state.filters[cat.field];
+        if (cat.field === "tags" && val && val.length > 0) {
+          const itemTags = (item.tags || "").split("|");
+          if (!val.every((v) => itemTags.includes(v))) return false;
+        } else if (val && String(item[cat.field] || "") !== val) {
+          return false;
+        }
       }
     }
     return true;
   });
 }
+
 
 function sortItems(items) {
   const arr = [...items];
@@ -95,25 +99,54 @@ function renderFilters() {
   const $sidebar = $("#sidebarFilters").empty();
   $sidebar.append('<div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 space-y-4"><h2 class="text-lg font-semibold">Filters</h2></div>');
   const $container = $sidebar.children().last();
+
   DB.categories.forEach((cat) => {
     if (cat.filter === "true") {
-      const options = unique(DB.items.map((i) => i[cat.field])).sort();
-      const sel = $(
-        `<div><label class="block text-sm font-medium mb-1">${cat.display}</label><select id="filter-${cat.field}" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"><option value="">Any</option></select></div>`
-      );
-      options.forEach((opt) => {
-        if (opt) sel.find("select").append(`<option value="${opt}">${opt}</option>`);
-      });
-      sel.find("select").val(state.filters[cat.field] || "");
-      sel.find("select").on("change", function () {
-        state.filters[cat.field] = this.value;
-        state.page = 1;
-        render();
-      });
-      $container.append(sel);
+      if (cat.field === "tags") {
+        // multi-select for tags
+        const allTags = unique(DB.items.flatMap((i) => (i.tags || "").split("|"))).sort();
+        const sel = $(`
+          <div>
+            <label class="block text-sm font-medium mb-1">${cat.display}</label>
+            <select id="filter-${cat.field}" multiple class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm h-32">
+            </select>
+          </div>
+        `);
+        allTags.forEach((t) => {
+          sel.find("select").append(`<option value="${t}">${t}</option>`);
+        });
+        sel.find("select").val(state.filters[cat.field] || []);
+        sel.find("select").on("change", function () {
+          const vals = $(this).val() || [];
+          state.filters[cat.field] = vals;
+          state.page = 1;
+          render();
+        });
+        $container.append(sel);
+      } else {
+        // regular single-select
+        const options = unique(DB.items.map((i) => i[cat.field])).sort();
+        const sel = $(`
+          <div>
+            <label class="block text-sm font-medium mb-1">${cat.display}</label>
+            <select id="filter-${cat.field}" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"><option value="">Any</option></select>
+          </div>
+        `);
+        options.forEach((opt) => {
+          if (opt) sel.find("select").append(`<option value="${opt}">${opt}</option>`);
+        });
+        sel.find("select").val(state.filters[cat.field] || "");
+        sel.find("select").on("change", function () {
+          state.filters[cat.field] = this.value;
+          state.page = 1;
+          render();
+        });
+        $container.append(sel);
+      }
     }
   });
 }
+
 
 function renderPager(total) {
   const pages = Math.max(1, Math.ceil(total / state.perPage));
@@ -142,33 +175,53 @@ function openLightbox(id) {
   lbIndex = filtered.findIndex((i) => i.id === id);
   if (lbIndex < 0) return;
   const i = filtered[lbIndex];
+
   $("#lbImage").attr("src", i.image || "");
   $("#lbTitle").text(i.title || "");
   $("#lbSubtitle").text(i.subtitle || "");
+
   const html = Object.entries(i)
+    .filter(([k]) => k !== "tags" && k !== "notes" && k !== "image" && k !== "title" && k !== "subtitle")
     .map(([k, v]) => `<dt class='text-slate-500'>${k}</dt><dd class='font-medium mb-2'>${v}</dd>`)
     .join("");
   $("#lbDetails").html(html);
+
+  // tags as pills
+  const tagHtml = (i.tags || "")
+    .split("|")
+    .filter(Boolean)
+    .map((t) => `<span class="inline-block bg-indigo-100 text-indigo-800 text-xs font-medium mr-1 mb-1 px-2 py-1 rounded-full">${t}</span>`)
+    .join("");
+  $("#lbDetails").append(`<dt class='text-slate-500'>Tags</dt><dd>${tagHtml}</dd>`);
+
   $("#lbNotes").text(i.notes || "");
   $("#lightbox").removeClass("hidden").addClass("flex");
 }
-$("#closeLightbox").on("click", () => $("#lightbox").addClass("hidden").removeClass("flex"));
 
-// --- Search ---
-$("#searchInput").on("input", () => {
-  state.q = $("#searchInput").val();
-  state.page = 1;
-  render();
-});
-$("#clearSearch").on("click", () => {
-  state.q = "";
-  $("#searchInput").val("");
-  state.page = 1;
-  render();
-});
+
+function hookupEvents() {
+  $("#closeLightbox").on("click", () => {
+    alert("clicked");
+    $("#lightbox").addClass("hidden").removeClass("flex");
+  });
+
+  // --- Search ---
+  $("#searchInput").on("input", () => {
+    state.q = $("#searchInput").val();
+    state.page = 1;
+    render();
+  });
+  $("#clearSearch").on("click", () => {
+    state.q = "";
+    $("#searchInput").val("");
+    state.page = 1;
+    render();
+  });
+}
 
 // --- Init ---
 $(async () => {
   await loadInitialData();
   render();
+  hookupEvents();
 });

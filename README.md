@@ -15,17 +15,17 @@ treasures on display.
 ## ✨ Features
 
 -   **Schema-driven design** -- define fields, filters, categories, and
-    search options in a simple CSV.\
+    search options in a simple CSV.
 -   **Dynamic navigation** -- categories and filters are generated
-    automatically from your dataset.\
+    automatically from your dataset.
 -   **Universal collections** -- works with stamps, coins, books, vinyl,
-    or any item type you define.\
+    or any item type you define.
 -   **Single-page app** -- built with HTML5, Tailwind CSS, and jQuery
-    for simplicity and speed.\
+    for simplicity and speed.
 -   **SEO-friendly deep links** -- every category and item has an
-    indexable URL and metadata.\
+    indexable URL and metadata.
 -   **Lightbox & modal support** -- clean, interactive item detail views
-    without leaving the page.\
+    without leaving the page.
 -   **Minimal setup** -- just drop in your CSV files, no database
     required.
 

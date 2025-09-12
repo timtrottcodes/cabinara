@@ -30,6 +30,14 @@ async function loadCSV(url) {
   return parseCSV(await resp.text());
 }
 
+async function loadSettings() {
+  const resp = await fetch("/data/settings.json");
+  DB.settings = await resp.json();
+  document.title = DB.settings.title;
+  $("#appTitle").text(DB.settings.title);
+  $("#footerTitle").text(DB.settings.title);
+}
+
 // --- State ---
 const state = { q: "", filters: {}, sortBy: "", page: 1, perPage: 20 };
 
@@ -79,9 +87,9 @@ function render() {
   if (!pageItems.length) $("#emptyState").removeClass("hidden");
   else $("#emptyState").addClass("hidden");
   pageItems.forEach((item) => {
-    const card = $(`<article class="group bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+    const card = $(`<article class="group bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
       <button class="block w-full text-left" data-id="${item.id}">
-        <div class="aspect-[3/4] bg-slate-100 overflow-hidden">
+        <div class="aspect-[3/4] bg-slate-100 dark:bg-slate-700 overflow-hidden">
           <img src="${item.image || ""}" alt="${item.title || ""}" class="w-full h-full object-cover"/>
         </div>
         <div class="p-3">
@@ -101,7 +109,7 @@ function render() {
 
 function renderFilters() {
   const $sidebar = $("#sidebarFilters").empty();
-  $sidebar.append('<div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 space-y-4"><h2 class="text-lg font-semibold">Filters</h2></div>');
+  $sidebar.append('<div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 space-y-4"><h2 class="text-lg font-semibold">Filters</h2></div>');
   const $container = $sidebar.children().last();
 
   DB.categories.forEach((cat) => {
@@ -137,7 +145,7 @@ function renderFilters() {
         const sel = $(`
           <div>
             <label class="block text-sm font-medium mb-1">${cat.display}</label>
-            <select id="filter-${cat.field}" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm">
+            <select id="filter-${cat.field}" class="w-full rounded-xl border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-100 dark:focus:ring-indigo-400">
               <option value="">Any</option>
             </select>
           </div>
@@ -240,10 +248,30 @@ function hookupEvents() {
     state.page = 1;
     render();
   });
+
+  $(document).on("click", "#themeToggle", toggleTheme);
+}
+
+function initTheme() {
+  const stored = localStorage.getItem("theme");
+  if (stored === "dark" || (!stored && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+    document.documentElement.classList.add("dark");
+    localStorage.setItem("theme", "dark");
+  } else {
+    document.documentElement.classList.remove("dark");
+    localStorage.setItem("theme", "light");
+  }
+}
+
+function toggleTheme() {
+  const isDark = document.documentElement.classList.toggle("dark");
+  localStorage.setItem("theme", isDark ? "dark" : "light");
 }
 
 // --- Init ---
 $(async () => {
+  await loadSettings();
+  initTheme();
   await loadInitialData();
   render();
   hookupEvents();

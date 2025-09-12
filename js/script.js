@@ -36,25 +36,29 @@ const state = { q: "", filters: {}, sortBy: "", page: 1, perPage: 20 };
 // --- Filter & Sort ---
 function filterItems(items) {
   return items.filter((item) => {
+    // search
     if (state.q) {
       const hay = Object.values(item).join(" ").toLowerCase();
       if (!hay.includes(state.q.toLowerCase())) return false;
     }
+
+    // category filters
     for (const cat of DB.categories) {
       if (cat.filter === "true") {
         const val = state.filters[cat.field];
-        if (cat.field === "tags" && val && val.length > 0) {
+        if (!val || val.length === 0) continue;
+
+        if (cat.field === "tags") {
           const itemTags = (item.tags || "").split("|");
-          if (!val.every((v) => itemTags.includes(v))) return false;
-        } else if (val && String(item[cat.field] || "") !== val) {
-          return false;
+          if (!val.some((tag) => itemTags.includes(tag))) return false;
+        } else {
+          if (String(item[cat.field] || "") !== val) return false;
         }
       }
     }
     return true;
   });
 }
-
 
 function sortItems(items) {
   const arr = [...items];
@@ -102,34 +106,40 @@ function renderFilters() {
 
   DB.categories.forEach((cat) => {
     if (cat.filter === "true") {
+      const options = unique(DB.items.flatMap((i) => (cat.field === "tags" ? (i[cat.field] || "").split("|") : [i[cat.field]]))).sort();
+
       if (cat.field === "tags") {
-        // multi-select for tags
-        const allTags = unique(DB.items.flatMap((i) => (i.tags || "").split("|"))).sort();
         const sel = $(`
-          <div>
-            <label class="block text-sm font-medium mb-1">${cat.display}</label>
-            <select id="filter-${cat.field}" multiple class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm h-32">
-            </select>
-          </div>
-        `);
-        allTags.forEach((t) => {
-          sel.find("select").append(`<option value="${t}">${t}</option>`);
-        });
-        sel.find("select").val(state.filters[cat.field] || []);
-        sel.find("select").on("change", function () {
-          const vals = $(this).val() || [];
-          state.filters[cat.field] = vals;
-          state.page = 1;
-          render();
-        });
+        <div>
+          <label class="block text-sm font-medium mb-1">${cat.display}</label>
+          <select id="filter-${cat.field}" multiple placeholder="Select tags..." class="tom-select w-full"></select>
+        </div>
+      `);
         $container.append(sel);
+
+        const selectEl = sel.find("select")[0];
+        tagSelect = new TomSelect(selectEl, {
+          plugins: ["remove_button"],
+          create: false,
+          persist: false,
+          onChange(values) {
+            // only update state here, don’t call render()!
+            state.filters[cat.field] = values;
+            state.page = 1;
+            render();
+          },
+        });
+
+        // populate options once
+        updateTagOptions();
       } else {
-        // regular single-select
-        const options = unique(DB.items.map((i) => i[cat.field])).sort();
+        // Regular single-select
         const sel = $(`
           <div>
             <label class="block text-sm font-medium mb-1">${cat.display}</label>
-            <select id="filter-${cat.field}" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"><option value="">Any</option></select>
+            <select id="filter-${cat.field}" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm">
+              <option value="">Any</option>
+            </select>
           </div>
         `);
         options.forEach((opt) => {
@@ -147,6 +157,20 @@ function renderFilters() {
   });
 }
 
+function updateTagOptions() {
+  if (!tagSelect) return;
+  const allTags = unique(DB.items.flatMap((i) => (i.tags ? i.tags.split("|") : []))).sort();
+
+  tagSelect.clearOptions();
+  allTags.forEach((tag) => {
+    tagSelect.addOption({ value: tag, text: tag });
+  });
+
+  // Restore selection
+  if (state.filters.tags?.length) {
+    tagSelect.setValue(state.filters.tags, true);
+  }
+}
 
 function renderPager(total) {
   const pages = Math.max(1, Math.ceil(total / state.perPage));
@@ -197,7 +221,6 @@ function openLightbox(id) {
   $("#lbNotes").text(i.notes || "");
   $("#lightbox").removeClass("hidden").addClass("flex");
 }
-
 
 function hookupEvents() {
   $("#closeLightbox").on("click", () => {

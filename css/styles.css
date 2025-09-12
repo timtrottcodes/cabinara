@@ -47,3 +47,72 @@
 .tooltip:hover:after {
   opacity: 1;
 }
+
+/* Tom Select overrides for Tailwind look */
+
+/* Control (the box itself) */
+.ts-control {
+  border-radius: 0.75rem;         /* rounded-xl */
+  border: 1px solid #cbd5e1;      /* border-slate-300 */
+  padding: 0.25rem 0.5rem;        /* px-2 py-1 */
+  font-size: 0.875rem;            /* text-sm */
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); /* shadow-sm */
+}
+.ts-control:focus-within {
+  outline: none;
+  border-color: #6366f1;          /* indigo-500 */
+  box-shadow: 0 0 0 2px #6366f1;  /* ring-indigo-500 */
+}
+
+/* Input inside control */
+.ts-control input {
+  font-size: 0.875rem;            /* text-sm */
+}
+
+/* Dropdown menu */
+.ts-dropdown {
+  border-radius: 0.75rem;         /* rounded-xl */
+  border: 1px solid #e2e8f0;      /* border-slate-200 */
+  font-size: 0.875rem;            /* text-sm */
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1),
+              0 2px 4px -2px rgb(0 0 0 / 0.1); /* shadow-lg */
+  background: #fff;
+  z-index: 50;
+}
+
+/* Dropdown option */
+.ts-dropdown .option {
+  padding: 0.25rem 0.75rem;       /* px-3 py-1 */
+  cursor: pointer;
+}
+.ts-dropdown .option:hover {
+  background: #e0e7ff;            /* indigo-100 */
+}
+.ts-dropdown .option.selected {
+  background: #c7d2fe;            /* indigo-200 */
+}
+
+/* Selected item pill */
+.ts-control .item {
+  display: inline-flex;
+  align-items: center;
+  background: #e0e7ff;            /* indigo-100 */
+  color: #3730a3;                 /* indigo-800 */
+  font-size: 0.75rem;             /* text-xs */
+  font-weight: 500;               /* font-medium */
+  padding: 0.125rem 0.5rem;       /* px-2 py-0.5 */
+  border-radius: 9999px;          /* rounded-full */
+  margin-right: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+/* Remove button inside pill */
+.ts-control .item .remove {
+  margin-left: 0.25rem;
+  color: #6366f1;                 /* indigo-500 */
+  cursor: pointer;
+}
+.ts-control .item .remove:hover {
+  color: #4338ca;                 /* indigo-700 */
+}
+

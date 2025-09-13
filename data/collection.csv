@@ -1,6 +1,0 @@
-id,category,name,notes,tags,image,thumbnail
-1,Gemstone,Amethyst,Beautiful purple crystal,crystal|purple,images/amethyst.jpg,images/thumbs/amethyst.jpg
-2,Gemstone,Ruby,Deep red ruby,red|gem,images/ruby.jpg,images/thumbs/ruby.jpg
-3,Rock,Quartz,Clear quartz crystal,crystal|white,images/quartz.jpg,images/thumbs/quartz.jpg
-4,Mineral,Pyrite,Fool's gold,metallic|gold,images/pyrite.jpg,images/thumbs/pyrite.jpg
-5,Mineral,Calcite,Translucent calcite crystals,white|carbonate,images/calcite.jpg,images/thumbs/calcite.jpg

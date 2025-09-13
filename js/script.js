@@ -5,18 +5,19 @@ const slug = (s) =>
     .replace(/(^-|-$)/g, "");
 const unique = (arr) => [...new Set(arr.filter(Boolean))];
 
-let DB = { meta: {}, categories: [], items: [] };
+let DB = { meta: {}, categories: [], items: [], settings: [] };
 
 // --- Load CSV Data ---
 async function loadInitialData() {
-  DB.categories = await loadCSV("/data/categories.csv");
-  DB.items = await loadCSV("/data/collection.csv");
+  const path = DB.settings.dataPath;
+  DB.categories = await loadCSV(`/data/${path}/categories.csv`);
+  DB.items = await loadCSV(`/data/${path}/collection.csv`);
 }
 
 // Minimal CSV parser
 function parseCSV(csvText) {
   const lines = csvText.trim().split("\n");
-  const headers = lines[0].split(",");
+  const headers = lines[0].trim().split(",");
   return lines.slice(1).map((line) => {
     const values = line.split(",");
     const obj = {};
@@ -90,10 +91,10 @@ function render() {
     const card = $(`<article class="group bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
       <button class="block w-full text-left" data-id="${item.id}">
         <div class="aspect-[3/4] bg-slate-100 dark:bg-slate-700 overflow-hidden">
-          <img src="${item.image || ""}" alt="${item.title || ""}" class="w-full h-full object-cover"/>
+          <img src="${item.thumbnail || ""}" alt="${item.title || item.name || ""}" class="w-full h-full object-cover"/>
         </div>
         <div class="p-3">
-          <h3 class="text-sm font-medium line-clamp-1">${item.title || ""}</h3>
+          <h3 class="text-sm font-medium line-clamp-1">${item.title || item.name || ""}</h3>
           <p class="text-xs text-slate-600 line-clamp-1">${item.subtitle || ""}</p>
         </div>
       </button>
@@ -213,8 +214,8 @@ function openLightbox(id) {
   $("#lbSubtitle").text(i.subtitle || "");
 
   const html = Object.entries(i)
-    .filter(([k]) => k !== "tags" && k !== "notes" && k !== "image" && k !== "title" && k !== "subtitle")
-    .map(([k, v]) => `<dt class='text-slate-500'>${k}</dt><dd class='font-medium mb-2'>${v}</dd>`)
+    .filter(([k]) => !["tags","id","notes","image","thumbnail","title","subtitle"].includes(k.trim()))
+    .map(([k, v]) => `<dt class='text-slate-500'>${k.trim()}</dt><dd class='font-medium mb-2'>${v}</dd>`)
     .join("");
   $("#lbDetails").html(html);
 
@@ -232,7 +233,6 @@ function openLightbox(id) {
 
 function hookupEvents() {
   $("#closeLightbox").on("click", () => {
-    alert("clicked");
     $("#lightbox").addClass("hidden").removeClass("flex");
   });
 

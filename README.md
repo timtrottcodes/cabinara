@@ -40,7 +40,7 @@ shared with the world --- without technical complexity.
 ------------------------------------------------------------------------
 
 ## 📂 Project Structure
-
+```text
   /cabinara
     ├── index.html                    # Main app page
     ├── js/script.js                  # Core logic
@@ -48,6 +48,7 @@ shared with the world --- without technical complexity.
     ├── data/settings.json            # A few settings for the app
     ├── data/default/categories.csv   # Defines schema fields
     ├── data/default/collection.csv   # Your collection data
+```
 
 ------------------------------------------------------------------------
 
@@ -56,7 +57,7 @@ shared with the world --- without technical complexity.
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/your-username/cabinara.git
+git clone https://github.com/timtrottcodes/cabinara.git
 cd cabinara
 ```
 
@@ -101,7 +102,7 @@ Each row describes a field with the following columns:
 | `category`   | If `true`, this field will appear as a navigation category.                               |
 | `filter`     | If `true`, this field will appear as a sidebar filter with a dropdown list.               |
 | `searchable` | If `true`, the field’s values will be included in full-text search.                       |
-| `tags`       | If `true`, the field will be treated as a multi-tag field (`|` separated values).         |
+| `tags`       | If `true`, the field will be treated as a multi-tag field (`\|` separated values).         |
 
 ⚠️ **The order of rows in `categories.csv` determines the display order in the UI.**
 
@@ -189,16 +190,6 @@ id,name,type,category,country,size,colour,quality,state,notes,tags,image,thumbna
 - Or host them externally and use full URLs in `collection.csv`.
 
 👉 Demo at [TimTrottCodes](https://timtrottcodes.github.io/cabinara/)
-
-------------------------------------------------------------------------
-
-## 🛠️ Customization
-
--   Update `categories.csv` to change field names, filters, and
-    navigation.\
--   Add styles in `tailwind.config.js` or custom CSS for branding.\
--   Extend `app.js` if you want custom behaviors (sorting, extra
-    metadata, etc).
 
 ------------------------------------------------------------------------
 

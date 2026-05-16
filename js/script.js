@@ -6,17 +6,72 @@ const slug = (s) =>
 const unique = (arr) => [...new Set(arr.filter(Boolean))];
 
 let DB = { meta: {}, categories: [], items: [], settings: [] };
+let tagSelect = null; // Fix: Declare tagSelect to avoid global pollution
+let filtersInitialized = false; // Track if filters have been initialized
+
+// --- Path Validation ---
+function validateDataPath(path) {
+  // Whitelist approach: only allow alphanumeric, hyphens, and underscores
+  // No path traversal sequences allowed
+  if (!path || typeof path !== 'string') {
+    return false;
+  }
+  // Check for path traversal attempts
+  if (path.includes('..') || path.includes('/') || path.includes('\\')) {
+    return false;
+  }
+  // Only allow safe characters
+  if (!/^[a-zA-Z0-9_-]+$/.test(path)) {
+    return false;
+  }
+  return true;
+}
+
+// --- Error Display ---
+function showError(message) {
+  const errorDiv = $('<div>')
+    .attr('role', 'alert')
+    .addClass('fixed top-4 right-4 bg-red-500 text-white px-6 py-4 rounded-lg shadow-lg z-50 max-w-md')
+    .text(message);
+
+  $('body').append(errorDiv);
+
+  setTimeout(() => {
+    errorDiv.fadeOut(300, function() {
+      $(this).remove();
+    });
+  }, 5000);
+}
 
 // --- Load CSV Data ---
 async function loadInitialData() {
-  const path = DB.settings.dataPath;
-  DB.categories = await loadCSV(`/data/${path}/categories.csv`);
-  DB.items = await loadCSV(`/data/${path}/collection.csv`);
+  try {
+    const path = DB.settings.dataPath;
+
+    // Validate path before using it
+    if (!validateDataPath(path)) {
+      throw new Error('Invalid data path configuration. Path must contain only letters, numbers, hyphens, and underscores.');
+    }
+
+    DB.categories = await loadCSV(`/data/${path}/categories.csv`);
+    DB.items = await loadCSV(`/data/${path}/collection.csv`);
+
+    if (!DB.categories || DB.categories.length === 0) {
+      throw new Error('Categories file is empty or invalid.');
+    }
+  } catch (error) {
+    console.error('Error loading initial data:', error);
+    showError(`Failed to load collection data: ${error.message}`);
+    throw error;
+  }
 }
 
 // Minimal CSV parser
 function parseCSV(csvText) {
   const lines = csvText.trim().split("\n");
+  if (lines.length === 0) {
+    return [];
+  }
   const headers = lines[0].trim().split(",");
   return lines.slice(1).map((line) => {
     const values = line.split(",");
@@ -27,16 +82,44 @@ function parseCSV(csvText) {
 }
 
 async function loadCSV(url) {
-  const resp = await fetch(url);
-  return parseCSV(await resp.text());
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) {
+      throw new Error(`HTTP error ${resp.status}: ${resp.statusText}`);
+    }
+    const text = await resp.text();
+    return parseCSV(text);
+  } catch (error) {
+    console.error(`Error loading CSV from ${url}:`, error);
+    throw new Error(`Failed to load ${url}: ${error.message}`);
+  }
 }
 
 async function loadSettings() {
-  const resp = await fetch("/data/settings.json");
-  DB.settings = await resp.json();
-  document.title = DB.settings.title;
-  $("#appTitle").text(DB.settings.title);
-  $("#footerTitle").text(DB.settings.title);
+  try {
+    const resp = await fetch("/data/settings.json");
+    if (!resp.ok) {
+      throw new Error(`HTTP error ${resp.status}: ${resp.statusText}`);
+    }
+    DB.settings = await resp.json();
+
+    // Validate and sanitize settings
+    if (!DB.settings.title || typeof DB.settings.title !== 'string') {
+      DB.settings.title = 'Virtual Collection';
+    }
+    if (!DB.settings.dataPath || typeof DB.settings.dataPath !== 'string') {
+      throw new Error('Missing or invalid dataPath in settings.json');
+    }
+
+    // Safely set text content
+    document.title = DB.settings.title;
+    $("#appTitle").text(DB.settings.title);
+    $("#footerTitle").text(DB.settings.title);
+  } catch (error) {
+    console.error('Error loading settings:', error);
+    showError(`Failed to load settings: ${error.message}`);
+    throw error;
+  }
 }
 
 // --- State ---
@@ -87,20 +170,44 @@ function render() {
   const $grid = $("#grid").empty();
   if (!pageItems.length) $("#emptyState").removeClass("hidden");
   else $("#emptyState").addClass("hidden");
+
   pageItems.forEach((item) => {
-    const card = $(`<article class="group bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-      <button class="block w-full text-left" data-id="${item.id}">
-        <div class="aspect-[3/4] bg-slate-100 dark:bg-slate-700 overflow-hidden">
-          <img src="${item.thumbnail || ""}" alt="${item.title || item.name || ""}" class="w-full h-full object-cover"/>
-        </div>
-        <div class="p-3">
-          <h3 class="text-sm font-medium line-clamp-1">${item.title || item.name || ""}</h3>
-          <p class="text-xs text-slate-600 line-clamp-1">${item.subtitle || ""}</p>
-        </div>
-      </button>
-    </article>`);
-    card.find("button").on("click", () => openLightbox(item.id));
-    $grid.append(card);
+    // Create elements safely without XSS vulnerabilities
+    const $article = $('<article>')
+      .addClass('group bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden');
+
+    const $button = $('<button>')
+      .addClass('block w-full text-left')
+      .attr('data-id', item.id || '');
+
+    const $imageContainer = $('<div>')
+      .addClass('aspect-[3/4] bg-slate-100 dark:bg-slate-700 overflow-hidden');
+
+    const $img = $('<img>')
+      .addClass('w-full h-full object-cover')
+      .attr('src', item.thumbnail || '')
+      .attr('alt', item.title || item.name || 'Collection item');
+
+    const $content = $('<div>').addClass('p-3');
+
+    const $title = $('<h3>')
+      .addClass('text-sm font-medium line-clamp-1')
+      .text(item.title || item.name || '');
+
+    const $subtitle = $('<p>')
+      .addClass('text-xs text-slate-600 line-clamp-1')
+      .text(item.subtitle || '');
+
+    // Assemble the card
+    $imageContainer.append($img);
+    $content.append($title, $subtitle);
+    $button.append($imageContainer, $content);
+    $article.append($button);
+
+    // Add click handler
+    $button.on("click", () => openLightbox(item.id));
+
+    $grid.append($article);
   });
 
   $("#resultCount").text(`${total} item${total === 1 ? "" : "s"}`);
@@ -213,19 +320,32 @@ function openLightbox(id) {
   $("#lbTitle").text(i.title || "");
   $("#lbSubtitle").text(i.subtitle || "");
 
-  const html = Object.entries(i)
-    .filter(([k]) => !["tags","id","notes","image","thumbnail","title","subtitle"].includes(k.trim()))
-    .map(([k, v]) => `<dt class='text-slate-500'>${k.trim()}</dt><dd class='font-medium mb-2'>${v}</dd>`)
-    .join("");
-  $("#lbDetails").html(html);
+  // Build details safely without XSS
+  const $details = $("#lbDetails").empty();
 
-  // tags as pills
-  const tagHtml = (i.tags || "")
+  Object.entries(i)
+    .filter(([k]) => !["tags","id","notes","image","thumbnail","title","subtitle"].includes(k.trim()))
+    .forEach(([k, v]) => {
+      const $dt = $('<dt>').addClass('text-slate-500').text(k.trim());
+      const $dd = $('<dd>').addClass('font-medium mb-2').text(v || '');
+      $details.append($dt, $dd);
+    });
+
+  // tags as pills - build safely
+  const $tagsDt = $('<dt>').addClass('text-slate-500').text('Tags');
+  const $tagsDd = $('<dd>');
+
+  (i.tags || "")
     .split("|")
     .filter(Boolean)
-    .map((t) => `<span class="inline-block bg-indigo-100 text-indigo-800 text-xs font-medium mr-1 mb-1 px-2 py-1 rounded-full">${t}</span>`)
-    .join("");
-  $("#lbDetails").append(`<dt class='text-slate-500'>Tags</dt><dd>${tagHtml}</dd>`);
+    .forEach((t) => {
+      const $pill = $('<span>')
+        .addClass('inline-block bg-indigo-100 text-indigo-800 text-xs font-medium mr-1 mb-1 px-2 py-1 rounded-full')
+        .text(t);
+      $tagsDd.append($pill);
+    });
+
+  $details.append($tagsDt, $tagsDd);
 
   $("#lbNotes").text(i.notes || "");
   $("#lightbox").removeClass("hidden").addClass("flex");
